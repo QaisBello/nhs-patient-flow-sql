@@ -1,0 +1,118 @@
+[
+ {
+  "id": "q01",
+  "file": "q01.sql",
+  "title": "Monthly admitted activity",
+  "question": "How many emergency and elective spells did the trust admit each month?",
+  "chart": "line",
+  "y": [
+   "emergency_spells",
+   "elective_spells"
+  ]
+ },
+ {
+  "id": "q02",
+  "file": "q02.sql",
+  "title": "Spells vs episodes",
+  "question": "Why do episode counts and spell counts differ, and by how much?",
+  "chart": "none"
+ },
+ {
+  "id": "q03",
+  "file": "q03.sql",
+  "title": "Length of stay by specialty",
+  "question": "What are the mean and median emergency length of stay by specialty, and how many go home the same day?",
+  "chart": "bar",
+  "y": [
+   "mean_los",
+   "median_los"
+  ]
+ },
+ {
+  "id": "q04",
+  "file": "q04.sql",
+  "title": "Bed occupancy",
+  "question": "How full were the 170 general and acute beds at midnight, month by month?",
+  "chart": "line",
+  "y": [
+   "avg_occupancy_pct"
+  ],
+  "ref": 95
+ },
+ {
+  "id": "q05",
+  "file": "q05.sql",
+  "title": "Long-stay patients",
+  "question": "How many patients had been in hospital 21+ days, and what share of beds did they use?",
+  "chart": "line",
+  "y": [
+   "avg_patients_21_plus_days"
+  ]
+ },
+ {
+  "id": "q06",
+  "file": "q06.sql",
+  "title": "30-day readmissions",
+  "question": "What share of patients came back as an emergency within 30 days, by specialty?",
+  "chart": "bar",
+  "y": [
+   "readmission_rate_pct"
+  ]
+ },
+ {
+  "id": "q07",
+  "file": "q07.sql",
+  "title": "Readmission, age and frailty",
+  "question": "How does readmission risk change with age, and with dementia as a frailty marker?",
+  "chart": "bar",
+  "y": [
+   "without_dementia_pct",
+   "with_dementia_pct"
+  ]
+ },
+ {
+  "id": "q08",
+  "file": "q08.sql",
+  "title": "Weekend discharges",
+  "question": "How many patients go home on each day of the week?",
+  "chart": "bar",
+  "y": [
+   "avg_per_day"
+  ]
+ },
+ {
+  "id": "q09",
+  "file": "q09.sql",
+  "title": "Deprivation and emergency admissions",
+  "question": "Are emergency admission rates higher in more deprived areas once age is accounted for?",
+  "chart": "bar",
+  "y": [
+   "crude_rate_per_1000",
+   "age_standardised_rate_per_1000"
+  ]
+ },
+ {
+  "id": "q10",
+  "file": "q10.sql",
+  "title": "Frequent attenders",
+  "question": "How many patients had 3+ emergency admissions in a year, and how many bed days did they use?",
+  "chart": "none"
+ },
+ {
+  "id": "q11",
+  "file": "q11.sql",
+  "title": "In-hospital mortality",
+  "question": "What is the crude in-hospital mortality for each common emergency diagnosis?",
+  "chart": "bar",
+  "y": [
+   "crude_mortality_pct"
+  ]
+ },
+ {
+  "id": "q12",
+  "file": "q12.sql",
+  "title": "Recording completeness",
+  "question": "How complete is ethnicity and deprivation recording each year?",
+  "chart": "none"
+ }
+]

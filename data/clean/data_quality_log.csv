@@ -1,0 +1,19 @@
+table,check,rows_affected,finding,action
+patients,Rows received,17173,"17,173 patient rows",-
+patients,Ethnic category case,484,Lower-case codes (e.g. 'a' for 'A'),Upper-cased
+patients,Duplicate patient rows,51,Same pseudonymised patient sent twice,Kept one
+patients,Ethnicity not stated,999,Coded Z (not stated),Kept; reported as its own group
+patients,No deprivation decile,349,Postcode could not be mapped to an LSOA,Kept; left out of deprivation analysis only
+spells,Rows received,22937,"22,937 spell rows",-
+spells,Whitespace in admission_method,429,Trailing spaces in a code field,Trimmed
+spells,Date format,2226,Dates sent as DD/MM/YYYY instead of YYYY-MM-DD,Parsed both formats
+spells,ICD-10 format,2699,Codes without the dot (J189 for J18.9),Standardised to dotted form
+spells,Duplicate spells,135,"Same spell sent twice (resubmission), identical once formats are fixed",Kept one
+spells,Conflicting duplicates,2,Same spell sent twice with an error in one copy,Kept the valid copy
+episodes,Duplicate episodes,108,Identical episode sent twice,Kept one
+spells,Invalid treatment function,75,Code 999 is not a valid treatment function,Taken from the spell's first consultant episode
+spells,Discharge before admission,26,Discharge date earlier than admission date: one of them is wrong,Excluded; listed in rejected_spells.csv
+spells,Placeholder discharge date (1900-01-01),41,"Discharge date missing, filled with a default value",Excluded; listed in rejected_spells.csv
+spells,Unfinished spells,163,Patient still in hospital when the extract was taken,"Kept with no discharge date; counted in bed occupancy, left out of length of stay"
+spells,Spells ready for analysis,22733,After fixes and exclusions,Written to data/clean/spells.csv
+diagnoses,ICD-10 format,3328,Secondary codes without the dot,Standardised

@@ -1,0 +1,7 @@
+admission_method,description,admission_group
+11,Elective: waiting list,Elective
+12,Elective: booked,Elective
+21,Emergency: via Emergency Care Department,Emergency
+22,Emergency: GP request,Emergency
+24,Emergency: consultant clinic,Emergency
+2B,Emergency: transfer from another provider,Emergency

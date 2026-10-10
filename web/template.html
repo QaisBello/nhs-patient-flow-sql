@@ -1,0 +1,320 @@
+<title>Patient Flow, in SQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-asm.js"></script>
+<style>
+/* Layout: a trust analyst's workbench. Headline flow numbers computed live by SQL, then raw-to-clean pipeline, then a question-led SQL lab with charted results, then the schema. */
+:root{
+  --paper:#f3f5f7; --card:#fbfcfd; --ink:#0f2233; --ink-2:#47596a; --muted:#7d8b98; --rule:#dde3e9; --axis:#c3ccd5;
+  --accent:#0a7d8c; --accent-2:#075f6b; --em:#d4572a; --el:#3567b5; --ok:#14866d; --warn:#b7791f; --bad:#c2410c;
+  --code-bg:#0f2233; --code-ink:#e8eef4;
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#0b1219; --card:#121b24; --ink:#e9eff4; --ink-2:#b4c1cc; --muted:#7d8b98; --rule:#223040; --axis:#33465a;
+  --accent:#22a6b5; --accent-2:#5cc4cf; --em:#ee7446; --el:#5d8be0; --ok:#2fb18f; --warn:#d69a34; --bad:#ef6a35;
+  --code-bg:#070d13; --code-ink:#e8eef4; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --paper:#0b1219; --card:#121b24; --ink:#e9eff4; --ink-2:#b4c1cc; --muted:#7d8b98; --rule:#223040; --axis:#33465a;
+  --accent:#22a6b5; --accent-2:#5cc4cf; --em:#ee7446; --el:#5d8be0; --ok:#2fb18f; --warn:#d69a34; --bad:#ef6a35;
+  --code-bg:#070d13; --code-ink:#e8eef4; color-scheme:dark; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.55}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:clamp(16px,3vw,32px);padding-block:28px 56px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3,p{margin:0}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px 40px;align-items:end}
+.head h1{font-weight:800;font-size:clamp(44px,6.6vw,84px);line-height:.95;letter-spacing:-.035em;margin-top:12px}
+.head h1 span{color:var(--accent)}
+.lede{font-size:clamp(16px,1.5vw,19px);line-height:1.5;color:var(--ink-2);margin-top:16px;max-width:52ch}
+.lede b{color:var(--ink)}
+.src{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.src a{color:var(--ink)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.live{background:var(--ok)}
+.note-card{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;font-size:13.5px;color:var(--ink-2)}
+.note-card b{color:var(--ink)}
+.tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid var(--rule);color:var(--ink-2);background:var(--paper)}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1px solid var(--rule);border-radius:16px;background:var(--card);overflow:hidden}
+.kpi{padding:14px 16px;border-right:1px solid var(--rule);min-width:0}
+.kpi:last-child{border-right:0}
+.kpi .k{font-size:12px;color:var(--ink-2);font-weight:600}
+.kpi .v{font-weight:800;font-size:clamp(24px,2.6vw,32px);line-height:1.1;margin-top:4px;letter-spacing:-.02em}
+.kpi .v small{font-size:.45em;font-weight:600;color:var(--muted);margin-left:3px;letter-spacing:0}
+.kpi .s{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px}
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{font-weight:800;font-size:clamp(20px,2.1vw,25px);line-height:1.15;letter-spacing:-.02em}
+.sub{color:var(--ink-2);max-width:78ch}
+.sub b{color:var(--ink)}
+.pipe{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:stretch}
+.stage{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;min-width:0}
+.stage .t{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stage .n{font-weight:800;font-size:26px;letter-spacing:-.02em}
+.stage .d{font-size:12.5px;color:var(--ink-2)}
+.stage a{color:var(--accent);font-size:12.5px;font-weight:600;text-decoration:none}
+.arrow{align-self:center;color:var(--muted);font-size:20px}
+.fixes{display:flex;flex-wrap:wrap;gap:6px}
+.fix{font-size:12px;border:1px solid var(--rule);border-radius:8px;padding:4px 8px;background:var(--paper);color:var(--ink-2)}
+.fix b{color:var(--ink);font-variant-numeric:tabular-nums}
+.lab{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
+.qlist{display:flex;flex-direction:column;gap:4px;position:sticky;top:12px}
+.q{all:unset;cursor:pointer;display:grid;grid-template-columns:34px 1fr;gap:4px;padding:8px 10px;border-radius:10px;font-size:13px;color:var(--ink-2);border:1px solid transparent}
+.q .n{font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:1px}
+.q:hover{background:var(--paper)}
+.q[aria-current="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:600}
+.q:focus-visible,.btn:focus-visible,.tbl:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.qh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.qh h2{max-width:60ch}
+.badge{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:99px;border:1px solid var(--rule);white-space:nowrap}
+.badge.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.badge.edit{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.badge.err{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+textarea{width:100%;min-height:240px;resize:vertical;background:var(--code-bg);color:var(--code-ink);border:0;border-radius:12px;padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.6;tab-size:2}
+textarea:focus{outline:2px solid var(--accent)}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{font:inherit;font-size:13px;font-weight:700;border-radius:10px;padding:8px 14px;border:1px solid var(--rule);background:var(--card);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.hint{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.insight{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--card));padding:12px 14px;border-radius:0 10px 10px 0;font-size:14px;color:var(--ink-2)}
+.insight b{color:var(--ink)}
+.resgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.tablewrap{overflow:auto;max-height:420px;border:1px solid var(--rule);border-radius:12px}
+table.res{border-collapse:collapse;width:100%;font-size:12.5px}
+table.res th{position:sticky;top:0;background:var(--card);font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500;text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+table.res td{padding:6px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+table.res td.n{text-align:right;font-variant-numeric:tabular-nums}
+.meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.err{color:var(--bad);font-family:var(--mono);font-size:12px;white-space:pre-wrap}
+svg{display:block;max-width:100%}
+svg text{fill:var(--ink-2);font-family:var(--sans);font-size:11px}
+.axis path,.axis line{stroke:var(--axis)}
+.axis text{fill:var(--muted);font-family:var(--mono);font-size:10px}
+.gl line{stroke:var(--rule)} .gl path{display:none}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.schema{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.tbl{all:unset;cursor:pointer;border:1px solid var(--rule);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;background:var(--card)}
+.tbl:hover{border-color:var(--accent)}
+.tbl .h{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink)}
+.tbl .h span{color:var(--muted)}
+.tbl .c{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.5}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:8px 10px;border-radius:9px;opacity:0;transition:opacity .1s;z-index:30;max-width:260px;line-height:1.45}
+footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+footer a{color:var(--ink-2)}
+@media (max-width:1000px){.head{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.kpi:nth-child(3n){border-right:0}.kpi{border-bottom:1px solid var(--rule)}
+ .lab{grid-template-columns:1fr}.qlist{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}.q{grid-template-columns:auto;white-space:nowrap}.q .t{display:none}
+ .resgrid{grid-template-columns:1fr}.pipe{grid-template-columns:1fr}.arrow{transform:rotate(90deg);justify-self:center}}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:nth-child(3n){border-right:1px solid var(--rule)}.kpi:nth-child(2n){border-right:0}}
+</style>
+<!--SITEBAR-->
+<div class="wrap">
+  <header class="head">
+    <div>
+      <div class="eyebrow">Health data · SQL · Synthetic NHS-style hospital extract</div>
+      <h1>Patient flow,<br><span>in SQL</span></h1>
+      <p class="lede">Two financial years of admitted patient care at a fictional acute trust: <b>admissions, length of stay, bed occupancy, readmissions and inequalities</b>, answered in SQL that runs in your browser.</p>
+      <div class="src" id="src"><span class="dot"></span>Loading data…</div>
+    </div>
+    <aside class="note-card">
+      <div class="eyebrow">About the data</div>
+      <div><b>Synthetic, not real patients.</b> Generated to behave like a hospital extract: winter pressure, quieter weekend discharges, a deprivation gradient and frail older patients coming back.</div>
+      <div>Coded with <b>NHS Data Dictionary</b> values (admission method, treatment function, discharge destination), <b>ICD-10</b> diagnoses and <b>OPCS-4</b> procedures, with spells and consultant episodes as in SUS/HES extracts.</div>
+      <div class="fixes"><span class="tag">SQLite in your browser</span><span class="tag">window functions</span><span class="tag">recursive CTEs</span><span class="tag">age standardisation</span></div>
+    </aside>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Headline figures"></section>
+
+  <section class="panel" aria-labelledby="h-pipe">
+    <div class="eyebrow">01 · Raw to clean</div>
+    <h2 id="h-pipe">The extract arrives messy. Every fix is logged.</h2>
+    <p class="sub">Duplicate submissions, two date formats, ICD-10 codes with and without the dot, invalid specialty codes and impossible dates. <code>src/clean.py</code> fixes what it can, excludes what it can't, and records both. Both versions are in the repo.</p>
+    <div class="pipe" id="pipe"></div>
+    <div class="fixes" id="fixes"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-lab">
+    <div class="eyebrow">02 · Questions a trust analyst gets asked</div>
+    <h2 id="h-lab" style="position:absolute;left:-9999px">SQL questions</h2>
+    <div class="lab">
+      <nav class="qlist" id="qlist" aria-label="Questions"></nav>
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div class="qh"><div><div class="eyebrow" id="q-num">Question</div><h2 id="q-title">–</h2></div><span class="badge" id="q-badge">–</span></div>
+        <textarea id="sql" spellcheck="false" aria-label="SQL query"></textarea>
+        <div class="actions"><button class="btn primary" type="button" id="run">Run query</button><button class="btn" type="button" id="reset">Reset</button><span class="hint">Ctrl/⌘ + Enter to run · edit anything</span></div>
+        <div class="insight" id="insight"></div>
+        <div class="meta" id="r-meta">Result</div>
+        <div class="resgrid"><div class="tablewrap" id="r-table"></div><div><div id="r-chart"></div><div class="legend" id="r-legend"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-schema">
+    <div class="eyebrow">03 · Schema</div>
+    <h2 id="h-schema">Tables in the database</h2>
+    <p class="sub">Click a table to preview it in the editor. <b>spells</b> is one row per hospital stay; <b>episodes</b> one row per consultant within it. Reference tables decode the NHS and ICD-10 codes.</p>
+    <div class="schema" id="schema"></div>
+  </section>
+
+  <footer>
+    <div><b>Synthetic data.</b> No real patient is represented. Patient IDs are random pseudonyms, dates of birth are month and year only, and the provider code XSG is fictional. Population denominators, deprivation deciles and the bed base (170 beds) are part of the simulation.</div>
+    <div>Code values follow the NHS Data Dictionary; age standardisation uses the 2013 European Standard Population. Built by Qais Adeniji-Bello. <a href="https://github.com/QaisBello/nhs-patient-flow-sql" target="_blank" rel="noopener">Code and data on GitHub</a>.</div>
+  </footer>
+</div>
+<div class="tip" id="tip"></div>
+<script>
+const SOURCE={repo:"QaisBello/nhs-patient-flow-sql",branch:"main"};
+const FALLBACKS=/*FALLBACKS*/["../"];
+const RAWURL=f=>`https://raw.githubusercontent.com/${SOURCE.repo}/${SOURCE.branch}/${f}`;
+const TABLES=["patients","spells","episodes","diagnoses","procedures","ref_icd10","ref_opcs4","ref_treatment_function","ref_admission_method","ref_discharge_destination","ref_discharge_method","population","ref_esp2013"];
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt=d3.format(","), f1=d3.format(".1f");
+let DB, INDEX, EXPECTED, DQ, cur=0, kind="snapshot";
+const tip=document.getElementById("tip");
+function showTip(e,h){tip.innerHTML=h;tip.style.opacity=1;const r=tip.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+14;if(x+r.width>innerWidth-8)x=e.clientX-r.width-14;if(y+r.height>innerHeight-8)y=e.clientY-r.height-14;tip.style.left=x+"px";tip.style.top=y+"px";}
+function hideTip(){tip.style.opacity=0;}
+async function get(path){for(const [u,k] of [[RAWURL(path),"live"],...FALLBACKS.map(f=>[f+path,"snapshot"])]){try{const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return {t:await r.text(),k};}catch(e){}}throw new Error(path);}
+const q1=sql=>{const r=DB.exec(sql);return r.length?r[0].values:[];};
+
+/* ---------- KPIs (computed by SQL on load) */
+function kpis(){
+  const [[spells,patients,emPct,los]]=q1("SELECT COUNT(*),COUNT(DISTINCT patient_id),100.0*AVG(admission_group='Emergency'),AVG(CASE WHEN admission_group='Emergency' THEN los_days END) FROM spells");
+  const occ=EXPECTED.q04.rows, readm=q1(`WITH idx AS (SELECT * FROM spells s WHERE admission_group='Emergency' AND discharge_date IS NOT NULL AND discharge_method<>'4' AND discharge_destination<>'51' AND discharge_date<=date('2026-03-31','-30 days'))
+    SELECT 100.0*AVG(EXISTS(SELECT 1 FROM spells r WHERE r.patient_id=i.patient_id AND r.admission_group='Emergency' AND r.spell_id<>i.spell_id AND r.admission_date BETWEEN i.discharge_date AND date(i.discharge_date,'+30 days'))) FROM idx i`)[0][0];
+  const peak=d3.max(occ,r=>r[3]);
+  const K=[["Hospital spells",fmt(spells),"Apr 2024 – Mar 2026"],["Patients",fmt(patients),"pseudonymised IDs"],["Emergency share",f1(emPct)+"<small>%</small>","of all admissions"],
+    ["Emergency length of stay",f1(los)+"<small>days</small>","mean, finished spells"],["30-day readmission",f1(readm)+"<small>%</small>","after an emergency stay"],["Peak monthly occupancy",f1(peak)+"<small>%</small>","of 170 beds at midnight"]];
+  document.getElementById("kpis").innerHTML=K.map(([k,v,s])=>`<div class="kpi"><div class="k">${k}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`).join("");
+}
+
+/* ---------- pipeline */
+function pipeline(){
+  const g=(t,c)=>+(DQ.find(r=>r.table===t&&r.check===c)||{}).rows_affected||0;
+  const raw=g("spells","Rows received"), clean=g("spells","Spells ready for analysis"), rej=g("spells","Discharge before admission")+g("spells","Placeholder discharge date (1900-01-01)");
+  const fixes=DQ.filter(r=>!/Rows received|ready for analysis/.test(r.check));
+  const gh=`https://github.com/${SOURCE.repo}/tree/${SOURCE.branch}/data`;
+  document.getElementById("pipe").innerHTML=`
+    <div class="stage"><div class="t">data/raw</div><div class="n num">${fmt(raw)}</div><div class="d">spell rows as received</div><a href="${gh}/raw" target="_blank" rel="noopener">Raw files →</a></div><div class="arrow">→</div>
+    <div class="stage"><div class="t">src/clean.py</div><div class="n num">${fixes.length}</div><div class="d">checks logged · ${fmt(rej)} spells excluded</div><a href="https://github.com/${SOURCE.repo}/blob/${SOURCE.branch}/data/clean/data_quality_log.csv" target="_blank" rel="noopener">Quality log →</a></div><div class="arrow">→</div>
+    <div class="stage"><div class="t">data/clean</div><div class="n num">${fmt(clean)}</div><div class="d">spells ready for analysis</div><a href="${gh}/clean" target="_blank" rel="noopener">Clean files →</a></div>`;
+  document.getElementById("fixes").innerHTML=fixes.map(r=>`<span class="fix" title="${r.finding} → ${r.action}"><b>${fmt(+r.rows_affected)}</b> · ${r.table==="spells"?"":r.table+": "}${/^[A-Z][a-z]/.test(r.check)?r.check[0].toLowerCase()+r.check.slice(1):r.check}</span>`).join("");
+}
+
+/* ---------- insights: written from the result rows so they always match the data */
+const col=(res,name)=>res.columns.indexOf(name);
+const INSIGHT={
+  q01:r=>{const i=col(r,"emergency_spells"),w=r.rows.filter(x=>/-(12|01|02)$/.test(x[0])),s=r.rows.filter(x=>/-(06|07|08)$/.test(x[0]));const a=d3.mean(w,x=>x[i]),b=d3.mean(s,x=>x[i]);return `Emergency admissions run <b>${f1(100*(a/b-1))}% higher</b> in winter (Dec–Feb, ${fmt(Math.round(a))} a month) than in summer (Jun–Aug, ${fmt(Math.round(b))}). Elective work dips in August and over Christmas.`;},
+  q02:r=>{const e=r.rows.find(x=>x[0]==="Emergency");return `Counting consultant episodes instead of spells would overstate emergency admissions by <b>${f1(100*(e[3]-1))}%</b>: ${f1(e[4])}% of emergency stays involve more than one consultant. Activity counts should use spells.`;},
+  q03:r=>{const t=r.rows[0],s=r.rows.find(x=>x[0]==="General Surgery");return `<b>${t[0]}</b> has the longest emergency stays (mean ${f1(t[2])} days, median ${t[3]}). Means sit well above medians because a few very long stays pull them up${s?`; ${f1(s[4])}% of general surgery emergencies go home the same day`:""}.`;},
+  q04:r=>{const n=d3.sum(r.rows,x=>x[4]),p=d3.max(r.rows,x=>x[3]),m=r.rows.find(x=>x[3]===p);return `Occupancy was above 95% on <b>${fmt(n)} nights</b>, peaking at <b>${f1(p)}%</b> in ${d3.timeFormat("%B %Y")(new Date(m[0]+"-01"))}. Winter is the pressure point, and the second year runs fuller than the first.`;},
+  q05:r=>{const i=col(r,"avg_patients_21_plus_days");return `On a typical night <b>${f1(d3.min(r.rows,x=>x[i]))}–${f1(d3.max(r.rows,x=>x[i]))} patients</b> had been in hospital three weeks or more, using ${f1(d3.min(r.rows,x=>x[2]))}–${f1(d3.max(r.rows,x=>x[2]))}% of occupied beds. These are the stays discharge teams focus on.`;},
+  q06:r=>{const t=r.rows[0],b=r.rows[r.rows.length-1];return `<b>${t[0]}</b> has the highest 30-day emergency readmission rate (<b>${f1(t[3])}%</b>); planned specialties such as ${b[0]} sit near ${f1(b[3])}%. Rates follow how frail and chronically ill each specialty's patients are.`;},
+  q07:r=>{const o=r.rows[r.rows.length-1];return `Readmission climbs with age, to <b>${f1(o[2])}%</b> for patients 85 and over. Among them, those with dementia coded are readmitted at <b>${f1(o[3])}%</b> against ${f1(o[4])}% without: a case for frailty-focused discharge planning.`;},
+  q08:r=>{const wk=r.rows.filter(x=>!/Sat|Sun/.test(x[0])),we=r.rows.filter(x=>/Sat|Sun/.test(x[0]));const a=d3.mean(wk,x=>x[2]),b=d3.mean(we,x=>x[2]);return `Weekend discharges run at <b>${f1(100*b/a)}%</b> of the weekday level (${f1(b)} vs ${f1(a)} a day), so patients ready to leave wait until Monday, the busiest discharge day.`;},
+  q09:r=>{const m=r.rows[0],l=r.rows[r.rows.length-1];return `After age standardisation, the most deprived fifth of the population is admitted as an emergency at <b>${f1(m[4])} per 1,000</b> a year, <b>${f1(m[4]/l[4])} times</b> the rate in the least deprived fifth (${f1(l[4])}).`;},
+  q10:r=>{const x=r.rows[0];return `<b>${fmt(x[0])} patients</b> (${f1(x[2])}% of those admitted as an emergency) had 3+ emergency admissions within a year. They account for ${f1(x[3])}% of emergency spells and <b>${f1(x[4])}% of emergency bed days</b>.`;},
+  q11:r=>{const t=r.rows[0];return `<b>${t[0]}</b> has the highest crude in-hospital mortality (${f1(t[4])}%, mean age ${t[5]}). Crude rates mostly reflect case mix; comparing hospitals fairly needs risk adjustment, as in the national SHMI indicator.`;},
+  q12:r=>{const x=r.rows[r.rows.length-1];return `In ${x[0]}, ethnicity was not stated for <b>${f1(x[2])}%</b> of patients and ${f1(x[3])}% had no deprivation decile. Both limit inequalities analysis, so they are tracked like any other indicator.`;}
+};
+
+/* ---------- lab */
+function renderList(){
+  document.getElementById("qlist").innerHTML=INDEX.map((q,i)=>`<button class="q" type="button" data-i="${i}" aria-current="${i===cur}"><span class="n">${q.id.toUpperCase()}</span><span class="t">${q.title}</span></button>`).join("");
+  document.querySelectorAll(".q").forEach(b=>b.onclick=()=>{cur=+b.dataset.i;select();});
+}
+async function select(){
+  const q=INDEX[cur]; renderList();
+  document.getElementById("q-num").textContent=`${q.id.toUpperCase()} · ${q.title}`;
+  document.getElementById("q-title").textContent=q.question;
+  document.getElementById("sql").value=q.sqlText;
+  run();
+}
+function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function run(){
+  const q=INDEX[cur], sql=document.getElementById("sql").value, badge=document.getElementById("q-badge");
+  const tbl=document.getElementById("r-table"), ch=document.getElementById("r-chart"), ins=document.getElementById("insight");
+  const t0=performance.now();
+  let res;
+  try{const r=DB.exec(sql);res=r.length?{columns:r[0].columns,rows:r[0].values.map(row=>row.map(v=>typeof v==="number"&&!Number.isInteger(v)?Math.round(v*1e6)/1e6:v))}:{columns:[],rows:[]};}
+  catch(e){badge.className="badge err";badge.textContent="SQL error";tbl.innerHTML=`<div class="err" style="padding:12px">${e.message}</div>`;ch.innerHTML="";document.getElementById("r-legend").innerHTML="";ins.style.display="none";document.getElementById("r-meta").textContent="Error";return;}
+  const ms=performance.now()-t0, exp=EXPECTED[q.id];
+  const match=exp&&same(res.columns,exp.columns)&&same(res.rows.map(r=>r.map(v=>typeof v==="number"?+v.toFixed(4):v)),exp.rows.map(r=>r.map(v=>typeof v==="number"?+v.toFixed(4):v)));
+  const edited=sql.trim()!==q.sqlText.trim();
+  badge.className="badge "+(match?"ok":"edit"); badge.textContent=match?"✓ matches the checked answer":(edited?"Edited query":"Differs from the checked answer");
+  document.getElementById("r-meta").textContent=`${fmt(res.rows.length)} row${res.rows.length===1?"":"s"} · ${ms<1?"<1":Math.round(ms)} ms · SQLite in your browser`;
+  tbl.innerHTML=res.columns.length?`<table class="res"><thead><tr>${res.columns.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${res.rows.slice(0,300).map(r=>`<tr>${r.map(v=>`<td class="${typeof v==="number"?"n":""}">${v===null?"<span style='color:var(--muted)'>NULL</span>":typeof v==="number"?(Number.isInteger(v)?fmt(v):d3.format(",.2~f")(v)):v}</td>`).join("")}</tr>`).join("")}</tbody></table>`:`<div class="meta" style="padding:12px">No rows.</div>`;
+  if(match&&INSIGHT[q.id]){ins.style.display="";ins.innerHTML=INSIGHT[q.id](res);}else if(!match){ins.style.display="";ins.innerHTML="Showing your edited query. <b>Reset</b> brings back the checked version and its finding.";}else ins.style.display="none";
+  chart(q,res);
+}
+function chart(q,res){
+  const host=document.getElementById("r-chart"), lg=document.getElementById("r-legend"); host.innerHTML="";lg.innerHTML="";
+  if(!q.y||!res.rows.length)return;
+  const ys=q.y.map(n=>res.columns.indexOf(n)).filter(i=>i>=0); if(!ys.length)return;
+  const cols=[css("--accent"),css("--em"),css("--el")];
+  const pal=q.id==="q01"?[css("--em"),css("--el")]:q.id==="q07"?[css("--axis"),css("--em")]:q.id==="q09"?[css("--axis"),css("--accent")]:q.id==="q03"?[css("--accent"),css("--axis")]:cols;
+  const w=Math.max(280,host.clientWidth),line=q.chart==="line";
+  const rows=res.rows, labels=rows.map(r=>String(r[0]));
+  if(line){
+    const h=270,mg={t:12,r:12,b:30,l:44};
+    const svg=d3.select(host).append("svg").attr("viewBox",`0 0 ${w} ${h}`).attr("width",w).attr("height",h).attr("role","img").attr("aria-label",q.title);
+    const x=d3.scalePoint().domain(labels).range([mg.l,w-mg.r]);
+    const vmax=d3.max(rows,r=>d3.max(ys,i=>r[i])), vmin=d3.min(rows,r=>d3.min(ys,i=>r[i]));
+    const y=d3.scaleLinear().domain([q.id==="q04"?Math.min(vmin,q.ref||vmin)-5:0,Math.max(vmax,q.ref||0)*1.05]).nice().range([h-mg.b,mg.t]);
+    svg.append("g").attr("class","gl").attr("transform",`translate(${mg.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(w-mg.l-mg.r)).tickFormat(""));
+    if(q.ref){svg.append("line").attr("x1",mg.l).attr("x2",w-mg.r).attr("y1",y(q.ref)).attr("y2",y(q.ref)).attr("stroke",css("--bad")).attr("stroke-dasharray","5 4");svg.append("text").attr("x",w-mg.r).attr("y",y(q.ref)-5).attr("text-anchor","end").style("fill",css("--bad")).style("font-size","10.5px").style("font-weight",700).text(`${q.ref}%`);}
+    ys.forEach((i,k)=>{svg.append("path").attr("d",d3.line().x((r,j)=>x(labels[j])).y(r=>y(r[i])).curve(d3.curveMonotoneX)(rows)).attr("fill","none").attr("stroke",pal[k]).attr("stroke-width",2.2);
+      svg.append("g").selectAll("circle").data(rows).join("circle").attr("cx",(r,j)=>x(labels[j])).attr("cy",r=>y(r[i])).attr("r",2.6).attr("fill",pal[k])
+        .on("mousemove",(e,r)=>showTip(e,`<b>${r[0]}</b><br>${res.columns[i]}: ${d3.format(",.1~f")(r[i])}`)).on("mouseleave",hideTip);});
+    const every=Math.ceil(labels.length/(w<460?4:8));
+    svg.append("g").attr("class","axis").attr("transform",`translate(0,${h-mg.b})`).call(d3.axisBottom(x).tickValues(labels.filter((_,j)=>j%every===0)).tickSize(3));
+    svg.append("g").attr("class","axis").attr("transform",`translate(${mg.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(3)).select(".domain").remove();
+  }else{
+    const bh=ys.length>1?12:16,gap=ys.length>1?10:8,rowH=bh*ys.length+gap,mg={t:6,r:46,b:22,l:Math.min(170,w*.42)},h=mg.t+mg.b+rows.length*rowH;
+    const svg=d3.select(host).append("svg").attr("viewBox",`0 0 ${w} ${h}`).attr("width",w).attr("height",h).attr("role","img").attr("aria-label",q.title);
+    const x=d3.scaleLinear().domain([0,d3.max(rows,r=>d3.max(ys,i=>r[i]))*1.05]).nice().range([mg.l,w-mg.r]);
+    svg.append("g").attr("class","gl").attr("transform",`translate(0,${h-mg.b})`).call(d3.axisBottom(x).ticks(4).tickSize(-(h-mg.t-mg.b)).tickFormat(""));
+    rows.forEach((r,j)=>{const y0=mg.t+j*rowH;
+      svg.append("text").attr("x",mg.l-8).attr("y",y0+bh*ys.length/2).attr("dy",".35em").attr("text-anchor","end").style("fill",css("--ink")).text(String(q.id==="q09"?`Quintile ${r[0]}${r[0]===1?" (most)":r[0]===5?" (least)":""}`:r[0]).slice(0,26));
+      ys.forEach((i,k)=>{const v=r[i]??0;svg.append("rect").attr("x",mg.l).attr("y",y0+k*bh).attr("width",Math.max(0,x(v)-mg.l)).attr("height",bh-2).attr("rx",3).attr("fill",pal[k])
+        .on("mousemove",e=>showTip(e,`<b>${r[0]}</b><br>${res.columns[i]}: ${r[i]===null?"–":d3.format(",.1~f")(r[i])}`)).on("mouseleave",hideTip);
+        svg.append("text").attr("x",x(v)+4).attr("y",y0+k*bh+bh/2-1).attr("dy",".35em").style("font-family","var(--mono)").style("font-size","10px").text(r[i]===null?"–":d3.format(",.1~f")(r[i]));});});
+    svg.append("g").attr("class","axis").attr("transform",`translate(0,${h-mg.b})`).call(d3.axisBottom(x).ticks(4).tickSize(3)).select(".domain").remove();
+  }
+  if(ys.length>1)lg.innerHTML=ys.map((i,k)=>`<span><i style="background:${pal[k]}"></i>${res.columns[i].replace(/_/g," ")}</span>`).join("");
+}
+
+/* ---------- schema */
+function schema(){
+  document.getElementById("schema").innerHTML=TABLES.map(t=>{const n=q1(`SELECT COUNT(*) FROM ${t}`)[0][0];const cols=DB.exec(`PRAGMA table_info(${t})`)[0].values.map(v=>v[1]);
+    return `<button class="tbl" type="button" data-t="${t}"><span class="h">${t}<span>${fmt(n)} rows</span></span><span class="c">${cols.join(", ")}</span></button>`;}).join("");
+  document.querySelectorAll(".tbl").forEach(b=>b.onclick=()=>{document.getElementById("sql").value=`SELECT *\nFROM ${b.dataset.t}\nLIMIT 50;`;run();document.getElementById("sql").scrollIntoView({behavior:"smooth",block:"center"});});
+}
+
+/* ---------- boot */
+async function boot(){
+  const src=document.getElementById("src");
+  try{
+    const [SQLmod,sch,idx,exp,dq]=await Promise.all([initSqlJs(),get("sql/schema.sql"),get("sql/index.json"),get("answers/expected.json"),get("data/clean/data_quality_log.csv")]);
+    kind=sch.k; INDEX=JSON.parse(idx.t); EXPECTED=JSON.parse(exp.t); DQ=d3.csvParse(dq.t);
+    DB=new SQLmod.Database(); DB.run(sch.t);
+    src.innerHTML=`<span class="dot"></span>Loading tables…`;
+    const texts=await Promise.all(TABLES.map(t=>get(`data/clean/${t}.csv`)));
+    DB.run("BEGIN");
+    texts.forEach((tx,i)=>{const rows=d3.csvParseRows(tx.t);const head=rows.shift();const st=DB.prepare(`INSERT INTO ${TABLES[i]} (${head.join(",")}) VALUES (${head.map(()=>"?").join(",")})`);
+      for(const r of rows){st.run(r.map(v=>v===""?null:v));} st.free();});
+    DB.run("COMMIT");
+    await Promise.all(INDEX.map(async q=>{q.sqlText=(await get(`sql/${q.file}`)).t.trim();}));
+    const live=kind==="live";
+    src.innerHTML=(live?`<span class="dot live"></span>Live from <a href="https://github.com/${SOURCE.repo}" target="_blank" rel="noopener">github.com/${SOURCE.repo}</a>`:`<span class="dot"></span>Bundled snapshot`)+` · ${fmt(q1("SELECT COUNT(*) FROM spells")[0][0])} spells loaded into SQLite`;
+    kpis(); pipeline(); schema(); select();
+    document.getElementById("run").onclick=()=>run();
+    document.getElementById("reset").onclick=()=>select();
+    document.getElementById("sql").addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();run();}});
+  }catch(e){console.error(e);src.innerHTML=`<span class="dot"></span>Couldn't load the data. Try reloading.`;}
+}
+boot();
+let rt;addEventListener("resize",()=>{if(!DB)return;clearTimeout(rt);rt=setTimeout(()=>chart(INDEX[cur],(()=>{try{const r=DB.exec(document.getElementById("sql").value);return {columns:r[0].columns,rows:r[0].values};}catch(e){return {columns:[],rows:[]};}})()),150);});
+new MutationObserver(()=>DB&&run()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+</script>
