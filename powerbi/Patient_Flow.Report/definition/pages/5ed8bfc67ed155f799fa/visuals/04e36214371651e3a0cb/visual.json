@@ -1,0 +1,160 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "04e36214371651e3a0cb",
+  "position": {
+    "x": 24,
+    "y": 456,
+    "z": 12,
+    "height": 252,
+    "width": 1232,
+    "tabOrder": 12
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Specialty"
+                    }
+                  },
+                  "Property": "description"
+                }
+              },
+              "queryRef": "Specialty.description",
+              "nativeQueryRef": "description",
+              "displayName": "Specialty"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Spells Count"
+                }
+              },
+              "queryRef": "Spells.Spells Count",
+              "nativeQueryRef": "Spells Count",
+              "displayName": "Spells"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Emergency Admissions"
+                }
+              },
+              "queryRef": "Spells.Emergency Admissions",
+              "nativeQueryRef": "Emergency Admissions",
+              "displayName": "Emergency"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Mean Length of Stay"
+                }
+              },
+              "queryRef": "Spells.Mean Length of Stay",
+              "nativeQueryRef": "Mean Length of Stay",
+              "displayName": "Mean LoS"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Median Length of Stay"
+                }
+              },
+              "queryRef": "Spells.Median Length of Stay",
+              "nativeQueryRef": "Median Length of Stay",
+              "displayName": "Median LoS"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Readmission Rate (30 days)"
+                }
+              },
+              "queryRef": "Spells.Readmission Rate (30 days)",
+              "nativeQueryRef": "Readmission Rate (30 days)",
+              "displayName": "Readmitted in 30 days"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Spells"
+                  }
+                },
+                "Property": "Spells Count"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'By specialty'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

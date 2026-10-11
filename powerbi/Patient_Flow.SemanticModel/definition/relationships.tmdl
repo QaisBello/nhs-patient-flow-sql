@@ -1,0 +1,33 @@
+relationship 5decda62-e939-5e19-b9ce-1c08417c9dd8
+	fromColumn: Spells.admission_date
+	toColumn: Date.Date
+
+relationship 3745aedf-23a2-5ac3-9141-06db6c773856
+	isActive: false
+	fromColumn: Spells.discharge_date
+	toColumn: Date.Date
+
+relationship 60db4933-5add-5474-8cc8-890fef97a4ea
+	fromColumn: Spells.patient_id
+	toColumn: Patients.patient_id
+
+relationship 71162fa6-44da-5dfd-8a9c-b0212b4d8f66
+	fromColumn: Spells.treatment_function
+	toColumn: Specialty.treatment_function
+
+relationship 449d038e-b9bc-5a67-81b7-00250a6f5fac
+	fromColumn: Spells.'Age Band 5y'
+	toColumn: 'Age Bands'.age_band
+
+relationship f740ecb4-a7ca-5dce-a24e-684ec3e2632c
+	fromColumn: Patients.imd_quintile
+	toColumn: Deprivation.imd_quintile
+
+relationship f7f27de0-df70-53c9-bdba-6c9c0b3a8579
+	fromColumn: Population.imd_quintile
+	toColumn: Deprivation.imd_quintile
+
+relationship 0d7f18bb-1d18-53c5-b788-3c3e66c25029
+	fromColumn: Population.age_band
+	toColumn: 'Age Bands'.age_band
+

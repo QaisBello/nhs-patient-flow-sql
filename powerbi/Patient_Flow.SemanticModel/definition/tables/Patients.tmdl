@@ -1,0 +1,83 @@
+/// One row per patient: sex, ethnicity and deprivation (IMD decile, 1 = most deprived).
+table Patients
+	lineageTag: 4196b111-876f-48d5-983c-18d2d9ab5e8a
+
+	column patient_id
+		dataType: string
+		isHidden
+		isKey
+		lineageTag: d4bb0b74-ef99-489d-aecc-2b69fb58bc78
+		summarizeBy: none
+		sourceColumn: patient_id
+
+	column sex
+		dataType: string
+		lineageTag: 5c578d27-d12d-4d5f-9fb9-9c97e7935960
+		summarizeBy: none
+		sourceColumn: sex
+
+	column birth_month
+		dataType: string
+		isHidden
+		lineageTag: c46d902b-3f6a-4f9f-9417-e3e5661bd0ed
+		summarizeBy: none
+		sourceColumn: birth_month
+
+	column ethnic_category
+		dataType: string
+		lineageTag: 82068e1b-e82f-4625-823e-6e2244ac5d20
+		summarizeBy: none
+		sourceColumn: ethnic_category
+
+	column imd_decile
+		dataType: int64
+		formatString: #,0
+		lineageTag: d41bc34b-38f6-48fd-b86f-983996c2c3bd
+		summarizeBy: none
+		sourceColumn: imd_decile
+
+	column gp_practice_code
+		dataType: string
+		isHidden
+		lineageTag: 04c5a655-e6c8-4845-a2ca-35e4bfbbad77
+		summarizeBy: none
+		sourceColumn: gp_practice_code
+
+	column imd_quintile
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: eecc2b2c-a4d2-47df-89b1-3aa3b3ff798b
+		summarizeBy: none
+		sourceColumn: imd_quintile
+
+	partition Patients = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(
+				        Web.Contents(BaseUrl, [RelativePath = "patients.csv"]),
+				        [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				    ),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    // empty cells and R's NA arrive as text and would fail the type change: make them null
+				    #"Blanks to Null" = Table.TransformColumns(#"Promoted Headers", {}, each if _ = "" or _ = "NA" then null else _),
+				    #"Changed Types" = Table.TransformColumnTypes(
+				        #"Blanks to Null",
+				        {
+				            {"patient_id", type text},
+				            {"sex", type text},
+				            {"birth_month", type text},
+				            {"ethnic_category", type text},
+				            {"imd_decile", Int64.Type},
+				            {"gp_practice_code", type text}
+				        },
+				        "en-US"
+				    ),
+				    #"Filtered Rows" = #"Changed Types",
+				    #"imd_quintile" = Table.AddColumn(#"Filtered Rows", "imd_quintile", each
+				        if [imd_decile] = null then null else Number.IntegerDivide([imd_decile] + 1, 2), Int64.Type),
+				    Result = #"imd_quintile"
+				in
+				    Result
+

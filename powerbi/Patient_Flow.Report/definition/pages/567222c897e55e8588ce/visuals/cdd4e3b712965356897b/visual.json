@@ -1,0 +1,218 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "cdd4e3b712965356897b",
+  "position": {
+    "x": 760,
+    "y": 184,
+    "z": 11,
+    "height": 524,
+    "width": 496,
+    "tabOrder": 11
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Deprivation"
+                    }
+                  },
+                  "Property": "Quintile"
+                }
+              },
+              "queryRef": "Deprivation.Quintile",
+              "nativeQueryRef": "Quintile"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Population Count"
+                }
+              },
+              "queryRef": "Spells.Population Count",
+              "nativeQueryRef": "Population Count",
+              "displayName": "Population"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Emergency Admissions per Year"
+                }
+              },
+              "queryRef": "Spells.Emergency Admissions per Year",
+              "nativeQueryRef": "Emergency Admissions per Year",
+              "displayName": "Admissions a year"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Crude Rate per 1,000"
+                }
+              },
+              "queryRef": "Spells.Crude Rate per 1,000",
+              "nativeQueryRef": "Crude Rate per 1,000",
+              "displayName": "Crude"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Spells"
+                    }
+                  },
+                  "Property": "Age-Standardised Rate per 1,000"
+                }
+              },
+              "queryRef": "Spells.Age-Standardised Rate per 1,000",
+              "nativeQueryRef": "Age-Standardised Rate per 1,000",
+              "displayName": "Age-standardised"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Deprivation"
+                  }
+                },
+                "Property": "Quintile"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Rates by quintile (patients with no deprivation decile excluded)'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "1882486303e371325397",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Deprivation"
+              }
+            },
+            "Property": "Quintile"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "fa41161318085945a881",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Spells"
+              }
+            },
+            "Property": "Population Count"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "5cc0c3c96ab2e4b6885a",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Spells"
+              }
+            },
+            "Property": "Emergency Admissions per Year"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "6b52f6ddf05d5cf110ff",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Spells"
+              }
+            },
+            "Property": "Crude Rate per 1,000"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "db7cb90c223a1736b61f",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Spells"
+              }
+            },
+            "Property": "Age-Standardised Rate per 1,000"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}

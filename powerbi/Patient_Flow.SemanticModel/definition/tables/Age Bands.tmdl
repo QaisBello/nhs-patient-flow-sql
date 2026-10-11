@@ -1,0 +1,53 @@
+/// Five-year age bands with 2013 European Standard Population weights (for age standardisation).
+table 'Age Bands'
+	lineageTag: fe4216ac-9eb5-4bfe-a9e4-7a705633b967
+
+	column age_band
+		dataType: string
+		isKey
+		lineageTag: 3ef4833f-12b9-41a4-a9a1-333dc96b5a6c
+		summarizeBy: none
+		sourceColumn: age_band
+
+	column esp2013_weight
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: dc06e966-ef58-49fe-8540-992cfc7608bc
+		summarizeBy: none
+		sourceColumn: esp2013_weight
+
+	column 'Band Order'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: 4af31f27-01fc-486f-b291-c7730484b5ff
+		summarizeBy: none
+		sourceColumn: Band Order
+
+	partition 'Age Bands' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(
+				        Web.Contents(BaseUrl, [RelativePath = "ref_esp2013.csv"]),
+				        [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				    ),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    // empty cells and R's NA arrive as text and would fail the type change: make them null
+				    #"Blanks to Null" = Table.TransformColumns(#"Promoted Headers", {}, each if _ = "" or _ = "NA" then null else _),
+				    #"Changed Types" = Table.TransformColumnTypes(
+				        #"Blanks to Null",
+				        {
+				            {"age_band", type text},
+				            {"esp2013_weight", Int64.Type}
+				        },
+				        "en-US"
+				    ),
+				    #"Filtered Rows" = #"Changed Types",
+				    #"Band Order" = Table.AddColumn(#"Filtered Rows", "Band Order", each
+				        if [age_band] = "90+" then 90 else Number.FromText(Text.BeforeDelimiter([age_band], "-")), Int64.Type),
+				    Result = #"Band Order"
+				in
+				    Result
+
