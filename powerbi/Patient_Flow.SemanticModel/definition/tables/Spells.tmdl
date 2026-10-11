@@ -1,0 +1,335 @@
+/// One row per hospital stay (cleaned; rejected spells excluded). Readmission flags are added in Power Query with the SQL's rules (sql/q06.sql).
+table Spells
+	lineageTag: 4b175daa-0368-4efc-8960-5f007bf810ed
+
+	/// Hospital stays (spells), counted on admission date.
+	measure 'Spells Count' = COUNTROWS ( Spells )
+		formatString: #,0
+		displayFolder: Activity
+		lineageTag: 901a3c26-67dc-490d-ae4b-49194ff29e1c
+
+	/// Emergency spells.
+	measure 'Emergency Admissions' = CALCULATE ( [Spells Count], Spells[admission_group] = "Emergency" )
+		formatString: #,0
+		displayFolder: Activity
+		lineageTag: 3e2b1cb6-fb49-42ac-adbb-1ba3bac4102f
+
+	/// Elective spells.
+	measure 'Elective Admissions' = CALCULATE ( [Spells Count], Spells[admission_group] = "Elective" )
+		formatString: #,0
+		displayFolder: Activity
+		lineageTag: 4fe369a0-c9db-4be7-bf30-15716d9941be
+
+	/// Mean days in hospital, discharged spells.
+	measure 'Mean Length of Stay' = CALCULATE ( AVERAGE ( Spells[los_days] ), NOT ISBLANK ( Spells[discharge_date] ) )
+		formatString: 0.0
+		displayFolder: Length of stay
+		lineageTag: fa59709b-9ba6-4286-83e3-8c9e7fb3bf20
+
+	/// Median days in hospital, discharged spells.
+	measure 'Median Length of Stay' = CALCULATE ( MEDIAN ( Spells[los_days] ), NOT ISBLANK ( Spells[discharge_date] ) )
+		formatString: 0.0
+		displayFolder: Length of stay
+		lineageTag: 6288322b-d272-4f2e-884b-9cf029d6a95d
+
+	/// Overnight stays counted on their discharge date instead of admission date (the inactive relationship), as sql/q08.sql.
+	measure 'Overnight Discharges' = CALCULATE ( [Spells Count], USERELATIONSHIP ( Spells[discharge_date], 'Date'[Date] ), Spells[los_days] > 0 )
+		formatString: #,0
+		displayFolder: Flow
+		lineageTag: 7b0357b9-fd01-4c7c-be5f-60319907ca63
+
+	/// Average discharges per calendar day in context.
+	measure 'Discharges per Day' = DIVIDE ( [Overnight Discharges], COUNTROWS ( 'Date' ) )
+		formatString: 0.0
+		displayFolder: Flow
+		lineageTag: 60e8de9d-4dd0-4754-8cc3-7b3f9867d16f
+
+	/// General and acute beds, as in the SQL.
+	measure 'Bed Base' = 170
+		formatString: #,0
+		displayFolder: Beds
+		lineageTag: fcb16aee-697e-4a9d-8cb4-1524d94d40e4
+
+	/// Patients in a bed at midnight on the last day in context: admitted on or before it and not yet discharged.
+	measure 'Beds Occupied at Midnight' =
+			VAR _d = MAX ( 'Date'[Date] )
+			RETURN
+			    CALCULATE (
+			        [Spells Count],
+			        REMOVEFILTERS ( 'Date' ),
+			        Spells[admission_date] <= _d,
+			        ISBLANK ( Spells[discharge_date] ) || Spells[discharge_date] > _d
+			    )
+		formatString: #,0
+		displayFolder: Beds
+		lineageTag: affca910-a002-4d95-af6b-f26790c858c4
+
+	/// Average of the nightly counts, from June 2024.
+	measure 'Average Beds Occupied' =
+			AVERAGEX (
+			    CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Occupancy Counted] = 1 ),
+			    [Beds Occupied at Midnight]
+			)
+		formatString: 0.0
+		displayFolder: Beds
+		lineageTag: dda1ff56-2169-40a5-9a6c-91f92b14c60f
+
+	/// Average midnight occupancy against the bed base.
+	measure 'Bed Occupancy' = DIVIDE ( [Average Beds Occupied], [Bed Base] )
+		formatString: 0.0%
+		displayFolder: Beds
+		lineageTag: c49c2e19-ed07-4652-b85c-c5240a36419e
+
+	/// Fullest night in context.
+	measure 'Peak Beds Occupied' =
+			MAXX (
+			    CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Occupancy Counted] = 1 ),
+			    [Beds Occupied at Midnight]
+			)
+		formatString: #,0
+		displayFolder: Beds
+		lineageTag: 0e8f8e3d-271b-422d-ab66-d922c224b919
+
+	/// Nights above 95% occupancy, the level at which flow suffers.
+	measure 'Nights Over 95%' =
+			COUNTROWS (
+			    FILTER (
+			        CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Occupancy Counted] = 1 ),
+			        [Beds Occupied at Midnight] > 0.95 * [Bed Base]
+			    )
+			)
+		formatString: #,0
+		displayFolder: Beds
+		lineageTag: f9c9f11c-7643-40b7-b5f7-915c29a3ba06
+
+	/// Reference line for charts.
+	measure '95% Line' = 0.95
+		formatString: 0%
+		displayFolder: Beds
+		lineageTag: 0ebdb005-d18d-410f-b1f6-beb7ba6e5d96
+
+	/// Index spells followed by an emergency admission within 30 days of discharge.
+	measure 'Readmission Rate (30 days)' = DIVIDE ( SUM ( Spells[Readmitted 30d] ), SUM ( Spells[Is Index Spell] ) )
+		formatString: 0.0%
+		displayFolder: Readmissions
+		lineageTag: 97496045-77fe-4410-ada0-f1c5b289235e
+
+	/// Emergency admissions divided by the years of data (2).
+	measure 'Emergency Admissions per Year' = DIVIDE ( [Emergency Admissions], CALCULATE ( DISTINCTCOUNT ( 'Date'[Financial Year] ), REMOVEFILTERS ( 'Date' ) ) )
+		formatString: #,0.0
+		displayFolder: Inequalities
+		lineageTag: adf738ee-e1e2-4f2c-80db-4f4f813eb569
+
+	/// Catchment population in context.
+	measure 'Population Count' = SUM ( Population[population] )
+		formatString: #,0
+		displayFolder: Inequalities
+		lineageTag: 0f82154d-6de5-454a-a76b-e152e685bbc0
+
+	/// Emergency admissions per 1,000 population a year, not adjusted for age.
+	measure 'Crude Rate per 1,000' = DIVIDE ( 1000 * CALCULATE ( [Emergency Admissions per Year], NOT ISBLANK ( Patients[imd_quintile] ) ), [Population Count] )
+		formatString: 0.0
+		displayFolder: Inequalities
+		lineageTag: d1ecd1a9-76c9-401a-bd97-4308b8bb4d56
+
+	/// Directly age-standardised to the 2013 European Standard Population: band rates weighted by ESP and averaged.
+	measure 'Age-Standardised Rate per 1,000' =
+			VAR _bands =
+			    ADDCOLUMNS (
+			        VALUES ( 'Age Bands'[age_band] ),
+			        "@w", CALCULATE ( MAX ( 'Age Bands'[esp2013_weight] ) ),
+			        "@pop", [Population Count],
+			        "@events", CALCULATE ( [Emergency Admissions per Year], NOT ISBLANK ( Patients[imd_quintile] ) )
+			    )
+			VAR _rated = FILTER ( _bands, [@pop] > 0 )
+			RETURN
+			    DIVIDE ( SUMX ( _rated, DIVIDE ( 1000 * [@events], [@pop] ) * [@w] ), SUMX ( _rated, [@w] ) )
+		formatString: 0.0
+		displayFolder: Inequalities
+		lineageTag: ac3432bd-a186-4ec6-be72-a966c38aa286
+
+	/// Most deprived fifth against least deprived fifth, age-standardised.
+	measure 'Deprivation Gap' =
+			DIVIDE (
+			    CALCULATE ( [Age-Standardised Rate per 1,000], Deprivation[imd_quintile] = 1 ),
+			    CALCULATE ( [Age-Standardised Rate per 1,000], Deprivation[imd_quintile] = 5 )
+			)
+		formatString: 0.0"x"
+		displayFolder: Inequalities
+		lineageTag: 8e7c1c31-4964-4918-b04b-09dbdebd755b
+
+	column spell_id
+		dataType: string
+		isHidden
+		isKey
+		lineageTag: ef141556-d822-4f18-9c20-4fbb6b6ab2de
+		summarizeBy: none
+		sourceColumn: spell_id
+
+	column patient_id
+		dataType: string
+		isHidden
+		lineageTag: 531f22bd-7461-4bf4-8dae-eddeef1c642e
+		summarizeBy: none
+		sourceColumn: patient_id
+
+	column provider_code
+		dataType: string
+		isHidden
+		lineageTag: eed77b04-adee-400a-9688-94873cb00517
+		summarizeBy: none
+		sourceColumn: provider_code
+
+	column admission_date
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: ecc22069-8fca-4f76-8a77-3d02bd267a51
+		summarizeBy: none
+		sourceColumn: admission_date
+
+	column discharge_date
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: 1aa9c05c-3fbd-4b45-9377-4076bb2247a4
+		summarizeBy: none
+		sourceColumn: discharge_date
+
+	column admission_method
+		dataType: string
+		lineageTag: e61facf2-c2f1-4471-a45a-cfaf25d8a5a1
+		summarizeBy: none
+		sourceColumn: admission_method
+
+	column treatment_function
+		dataType: string
+		isHidden
+		lineageTag: 424ee268-a864-49bb-925f-1a5825dee348
+		summarizeBy: none
+		sourceColumn: treatment_function
+
+	column primary_diagnosis
+		dataType: string
+		lineageTag: 7331b442-a59d-4c73-b233-f53442d7ce8e
+		summarizeBy: none
+		sourceColumn: primary_diagnosis
+
+	column discharge_method
+		dataType: string
+		lineageTag: 901598f6-ffd4-452d-bc8a-9999c7986426
+		summarizeBy: none
+		sourceColumn: discharge_method
+
+	column discharge_destination
+		dataType: string
+		lineageTag: e0995917-cae2-404a-aa8f-44d6f6ffd454
+		summarizeBy: none
+		sourceColumn: discharge_destination
+
+	column age_on_admission
+		dataType: int64
+		formatString: #,0
+		lineageTag: 2421829a-60a6-4045-bddd-ad9a78685186
+		summarizeBy: none
+		sourceColumn: age_on_admission
+
+	column los_days
+		dataType: int64
+		formatString: #,0
+		lineageTag: 4cda7973-dfa9-42f2-9ddc-47caf3de91da
+		summarizeBy: none
+		sourceColumn: los_days
+
+	column admission_group
+		dataType: string
+		lineageTag: 3bf6c1eb-b51f-4f08-902f-84269dd3a23b
+		summarizeBy: none
+		sourceColumn: admission_group
+
+	column financial_year
+		dataType: string
+		lineageTag: 2d5cf186-f0e3-4a69-aa44-9712fba1a8ba
+		summarizeBy: none
+		sourceColumn: financial_year
+
+	column age_band
+		dataType: string
+		lineageTag: cd82de19-9597-491c-897a-f4362acb6639
+		summarizeBy: none
+		sourceColumn: age_band
+
+	column 'Age Band 5y'
+		dataType: string
+		isHidden
+		lineageTag: db784f5c-7174-4bce-9923-d14b59c6d7f0
+		summarizeBy: none
+		sourceColumn: Age Band 5y
+
+	column 'Is Index Spell'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: 8dbcd004-ed72-4307-8ce9-24a48db6e7f2
+		summarizeBy: none
+		sourceColumn: Is Index Spell
+
+	column 'Readmitted 30d'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: 2684fba9-24f5-42ec-a127-dfb4be244a64
+		summarizeBy: none
+		sourceColumn: Readmitted 30d
+
+	partition Spells = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(
+				        Web.Contents(BaseUrl, [RelativePath = "spells.csv"]),
+				        [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				    ),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    // empty cells and R's NA arrive as text and would fail the type change: make them null
+				    #"Blanks to Null" = Table.TransformColumns(#"Promoted Headers", {}, each if _ = "" or _ = "NA" then null else _),
+				    #"Changed Types" = Table.TransformColumnTypes(
+				        #"Blanks to Null",
+				        {
+				            {"spell_id", type text},
+				            {"patient_id", type text},
+				            {"provider_code", type text},
+				            {"admission_date", type datetime},
+				            {"discharge_date", type datetime},
+				            {"admission_method", type text},
+				            {"treatment_function", type text},
+				            {"primary_diagnosis", type text},
+				            {"discharge_method", type text},
+				            {"discharge_destination", type text},
+				            {"age_on_admission", Int64.Type},
+				            {"los_days", Int64.Type},
+				            {"admission_group", type text},
+				            {"financial_year", type text},
+				            {"age_band", type text}
+				        },
+				        "en-US"
+				    ),
+				    #"Filtered Rows" = #"Changed Types",
+				    #"Age Band 5y" = Table.AddColumn(#"Filtered Rows", "Age Band 5y", each if [age_on_admission] = null then null else if [age_on_admission] >= 90 then "90+"
+				        else Text.From(Number.IntegerDivide([age_on_admission], 5) * 5) & "-" & Text.From(Number.IntegerDivide([age_on_admission], 5) * 5 + 4), type text),
+				    Emergency = Table.Buffer(Table.RenameColumns(
+				        Table.SelectColumns(Table.SelectRows(#"Age Band 5y", each [admission_group] = "Emergency"), {"patient_id", "spell_id", "admission_date"}),
+				        {{"patient_id", "r_patient"}, {"spell_id", "r_spell"}, {"admission_date", "r_admitted"}})),
+				    Joined = Table.NestedJoin(#"Age Band 5y", {"patient_id"}, Emergency, {"r_patient"}, "Later", JoinKind.LeftOuter),
+				    // index spell: discharged alive, not transferred to another hospital, with a full 30 days of follow-up (as sql/q06.sql)
+				    #"Is Index Spell" = Table.AddColumn(Joined, "Is Index Spell", each
+				        if [discharge_date] <> null and [discharge_method] <> "4" and [discharge_destination] <> "51"
+				           and [discharge_date] <= #datetime(2026, 3, 1, 0, 0, 0) then 1 else 0, Int64.Type),
+				    #"Readmitted 30d" = Table.AddColumn(#"Is Index Spell", "Readmitted 30d", each
+				        if [Is Index Spell] = 0 then null
+				        else if Table.RowCount(Table.SelectRows([Later], (r) => r[r_spell] <> [spell_id]
+				                and r[r_admitted] >= [discharge_date] and r[r_admitted] <= Date.AddDays([discharge_date], 30))) > 0 then 1 else 0,
+				        Int64.Type),
+				    #"Without Join" = Table.RemoveColumns(#"Readmitted 30d", {"Later"}),
+				    Result = #"Without Join"
+				in
+				    Result
+

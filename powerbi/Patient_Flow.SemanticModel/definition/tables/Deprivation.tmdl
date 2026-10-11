@@ -1,0 +1,31 @@
+/// Deprivation quintiles: 1 = most deprived fifth of areas, 5 = least deprived.
+table Deprivation
+	lineageTag: cc287527-ab43-42b7-8afd-0efa875907dd
+
+	column imd_quintile
+		dataType: int64
+		isHidden
+		isKey
+		formatString: #,0
+		lineageTag: b4d6273e-2cba-4648-b9ee-a6e9f7bcd874
+		summarizeBy: none
+		sourceColumn: imd_quintile
+
+	column Quintile
+		dataType: string
+		lineageTag: 1923ff50-fdc9-4d87-850c-11db1c6caf08
+		summarizeBy: none
+		sourceColumn: Quintile
+		sortByColumn: imd_quintile
+
+	partition Deprivation = m
+		mode: import
+		source =
+				let
+				    Source = Table.FromRecords({
+				        [imd_quintile = 1, Quintile = "1 (most deprived)"], [imd_quintile = 2, Quintile = "2"], [imd_quintile = 3, Quintile = "3"],
+				        [imd_quintile = 4, Quintile = "4"], [imd_quintile = 5, Quintile = "5 (least deprived)"]}),
+				    Result = Table.TransformColumnTypes(Source, {{"imd_quintile", Int64.Type}, {"Quintile", type text}})
+				in
+				    Result
+

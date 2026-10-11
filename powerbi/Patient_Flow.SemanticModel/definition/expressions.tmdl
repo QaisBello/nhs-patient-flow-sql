@@ -1,0 +1,6 @@
+/// Folder of cleaned CSVs from this repo (data/clean). Point it at a local folder or another branch to test.
+expression BaseUrl = "https://raw.githubusercontent.com/QaisBello/nhs-patient-flow-sql/main/data/clean/" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 66a7e579-ff84-43ce-b6c4-3b76682f63be
+
+	annotation PBI_ResultType = Text
+

@@ -1,0 +1,59 @@
+/// Catchment population by five-year age band, sex and deprivation quintile (denominators for rates).
+table Population
+	lineageTag: 0675272b-e568-45dd-94ef-a7eb2fa3975b
+
+	column age_band
+		dataType: string
+		isHidden
+		lineageTag: 40ae208b-459e-44a1-9b49-4190268aa786
+		summarizeBy: none
+		sourceColumn: age_band
+
+	column sex
+		dataType: string
+		isHidden
+		lineageTag: 82cf16c5-7c40-45b7-b8e8-b52d2982c5b1
+		summarizeBy: none
+		sourceColumn: sex
+
+	column imd_quintile
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: a35a8335-07c4-409c-a441-9ebb9197f1ab
+		summarizeBy: none
+		sourceColumn: imd_quintile
+
+	column population
+		dataType: int64
+		formatString: #,0
+		lineageTag: 3c14f7eb-a6a5-4b0f-ae84-dd6fa73140ea
+		summarizeBy: none
+		sourceColumn: population
+
+	partition Population = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(
+				        Web.Contents(BaseUrl, [RelativePath = "population.csv"]),
+				        [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				    ),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    // empty cells and R's NA arrive as text and would fail the type change: make them null
+				    #"Blanks to Null" = Table.TransformColumns(#"Promoted Headers", {}, each if _ = "" or _ = "NA" then null else _),
+				    #"Changed Types" = Table.TransformColumnTypes(
+				        #"Blanks to Null",
+				        {
+				            {"age_band", type text},
+				            {"sex", type text},
+				            {"imd_quintile", Int64.Type},
+				            {"population", Int64.Type}
+				        },
+				        "en-US"
+				    ),
+				    #"Filtered Rows" = #"Changed Types",
+				    Result = #"Filtered Rows"
+				in
+				    Result
+

@@ -1,0 +1,689 @@
+{
+  "tables": [
+    {
+      "name": "Spells",
+      "description": "One row per hospital stay (cleaned; rejected spells excluded). Readmission flags are added in Power Query with the SQL's rules (sql/q06.sql).",
+      "columns": [
+        {
+          "name": "spell_id",
+          "type": "string",
+          "hidden": true,
+          "key": true
+        },
+        {
+          "name": "patient_id",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "provider_code",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "admission_date",
+          "type": "dateTime",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "discharge_date",
+          "type": "dateTime",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "admission_method",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "treatment_function",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "primary_diagnosis",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "discharge_method",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "discharge_destination",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "age_on_admission",
+          "type": "int64",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "los_days",
+          "type": "int64",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "admission_group",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "financial_year",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "age_band",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "Age Band 5y",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "Is Index Spell",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "Readmitted 30d",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "description": "One row per patient: sex, ethnicity and deprivation (IMD decile, 1 = most deprived).",
+      "columns": [
+        {
+          "name": "patient_id",
+          "type": "string",
+          "hidden": true,
+          "key": true
+        },
+        {
+          "name": "sex",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "birth_month",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "ethnic_category",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "imd_decile",
+          "type": "int64",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "gp_practice_code",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "imd_quintile",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        }
+      ]
+    },
+    {
+      "name": "Deprivation",
+      "description": "Deprivation quintiles: 1 = most deprived fifth of areas, 5 = least deprived.",
+      "columns": [
+        {
+          "name": "imd_quintile",
+          "type": "int64",
+          "hidden": true,
+          "key": true
+        },
+        {
+          "name": "Quintile",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        }
+      ]
+    },
+    {
+      "name": "Age Bands",
+      "description": "Five-year age bands with 2013 European Standard Population weights (for age standardisation).",
+      "columns": [
+        {
+          "name": "age_band",
+          "type": "string",
+          "hidden": false,
+          "key": true
+        },
+        {
+          "name": "esp2013_weight",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "Band Order",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        }
+      ]
+    },
+    {
+      "name": "Population",
+      "description": "Catchment population by five-year age band, sex and deprivation quintile (denominators for rates).",
+      "columns": [
+        {
+          "name": "age_band",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "sex",
+          "type": "string",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "imd_quintile",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "population",
+          "type": "int64",
+          "hidden": false,
+          "key": false
+        }
+      ]
+    },
+    {
+      "name": "Specialty",
+      "description": "Treatment function codes (NHS Data Dictionary).",
+      "columns": [
+        {
+          "name": "treatment_function",
+          "type": "string",
+          "hidden": true,
+          "key": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        }
+      ]
+    },
+    {
+      "name": "Date",
+      "description": "Every day from 1 April 2024 to 31 March 2026. Occupancy Counted = 1 from 1 June 2024: patients admitted before the extract began are missing, so earlier nights undercount (as sql/q04.sql).",
+      "columns": [
+        {
+          "name": "Date",
+          "type": "dateTime",
+          "hidden": false,
+          "key": true
+        },
+        {
+          "name": "Month Start",
+          "type": "dateTime",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "Month",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "Financial Year",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "Weekday",
+          "type": "string",
+          "hidden": false,
+          "key": false
+        },
+        {
+          "name": "Weekday No",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        },
+        {
+          "name": "Occupancy Counted",
+          "type": "int64",
+          "hidden": true,
+          "key": false
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "fromTable": "Spells",
+      "fromColumn": "admission_date",
+      "toTable": "Date",
+      "toColumn": "Date",
+      "both": false
+    },
+    {
+      "fromTable": "Spells",
+      "fromColumn": "discharge_date",
+      "toTable": "Date",
+      "toColumn": "Date",
+      "both": false
+    },
+    {
+      "fromTable": "Spells",
+      "fromColumn": "patient_id",
+      "toTable": "Patients",
+      "toColumn": "patient_id",
+      "both": false
+    },
+    {
+      "fromTable": "Spells",
+      "fromColumn": "treatment_function",
+      "toTable": "Specialty",
+      "toColumn": "treatment_function",
+      "both": false
+    },
+    {
+      "fromTable": "Spells",
+      "fromColumn": "Age Band 5y",
+      "toTable": "Age Bands",
+      "toColumn": "age_band",
+      "both": false
+    },
+    {
+      "fromTable": "Patients",
+      "fromColumn": "imd_quintile",
+      "toTable": "Deprivation",
+      "toColumn": "imd_quintile",
+      "both": false
+    },
+    {
+      "fromTable": "Population",
+      "fromColumn": "imd_quintile",
+      "toTable": "Deprivation",
+      "toColumn": "imd_quintile",
+      "both": false
+    },
+    {
+      "fromTable": "Population",
+      "fromColumn": "age_band",
+      "toTable": "Age Bands",
+      "toColumn": "age_band",
+      "both": false
+    }
+  ],
+  "measures": [
+    {
+      "name": "Spells Count",
+      "table": "Spells",
+      "folder": "Activity",
+      "format": "#,0",
+      "dax": "COUNTROWS ( Spells )",
+      "description": "Hospital stays (spells), counted on admission date."
+    },
+    {
+      "name": "Emergency Admissions",
+      "table": "Spells",
+      "folder": "Activity",
+      "format": "#,0",
+      "dax": "CALCULATE ( [Spells Count], Spells[admission_group] = \"Emergency\" )",
+      "description": "Emergency spells."
+    },
+    {
+      "name": "Elective Admissions",
+      "table": "Spells",
+      "folder": "Activity",
+      "format": "#,0",
+      "dax": "CALCULATE ( [Spells Count], Spells[admission_group] = \"Elective\" )",
+      "description": "Elective spells."
+    },
+    {
+      "name": "Mean Length of Stay",
+      "table": "Spells",
+      "folder": "Length of stay",
+      "format": "0.0",
+      "dax": "CALCULATE ( AVERAGE ( Spells[los_days] ), NOT ISBLANK ( Spells[discharge_date] ) )",
+      "description": "Mean days in hospital, discharged spells."
+    },
+    {
+      "name": "Median Length of Stay",
+      "table": "Spells",
+      "folder": "Length of stay",
+      "format": "0.0",
+      "dax": "CALCULATE ( MEDIAN ( Spells[los_days] ), NOT ISBLANK ( Spells[discharge_date] ) )",
+      "description": "Median days in hospital, discharged spells."
+    },
+    {
+      "name": "Overnight Discharges",
+      "table": "Spells",
+      "folder": "Flow",
+      "format": "#,0",
+      "dax": "CALCULATE ( [Spells Count], USERELATIONSHIP ( Spells[discharge_date], 'Date'[Date] ), Spells[los_days] > 0 )",
+      "description": "Overnight stays counted on their discharge date instead of admission date (the inactive relationship), as sql/q08.sql."
+    },
+    {
+      "name": "Discharges per Day",
+      "table": "Spells",
+      "folder": "Flow",
+      "format": "0.0",
+      "dax": "DIVIDE ( [Overnight Discharges], COUNTROWS ( 'Date' ) )",
+      "description": "Average discharges per calendar day in context."
+    },
+    {
+      "name": "Bed Base",
+      "table": "Spells",
+      "folder": "Beds",
+      "format": "#,0",
+      "dax": "170",
+      "description": "General and acute beds, as in the SQL."
+    },
+    {
+      "name": "Beds Occupied at Midnight",
+      "table": "Spells",
+      "folder": "Beds",
+      "format": "#,0",
+      "dax": "VAR _d = MAX ( 'Date'[Date] )\nRETURN\n    CALCULATE (\n        [Spells Count],\n        REMOVEFILTERS ( 'Date' ),\n        Spells[admission_date] <= _d,\n        ISBLANK ( Spells[discharge_date] ) || Spells[discharge_date] > _d\n    )",
+      "description": "Patients in a bed at midnight on the last day in context: admitted on or before it and not yet discharged."
+    },
+    {
+      "name": "Average Beds Occupied",
+      "table": "Spells",
+      "folder": "Beds",
+      "format": "0.0",
+      "dax": "AVERAGEX (\n    CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Occupancy Counted] = 1 ),\n    [Beds Occupied at Midnight]\n)",
+      "description": "Average of the nightly counts, from June 2024."
+    },
+    {
+      "name": "Bed Occupancy",
+      "table": "Spells",
+      "folder": "Beds",
+      "format": "0.0%",
+      "dax": "DIVIDE ( [Average Beds Occupied], [Bed Base] )",
+      "description": "Average midnight occupancy against the bed base."
+    },
+    {
+      "name": "Peak Beds Occupied",
+      "table": "Spells",
+      "folder": "Beds",
+      "format": "#,0",
+      "dax": "MAXX (\n    CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Occupancy Counted] = 1 ),\n    [Beds Occupied at Midnight]\n)",
+      "description": "Fullest night in context."
+    },
+    {
+      "name": "Nights Over 95%",
+      "table": "Spells",
+      "folder": "Beds",
+      "format": "#,0",
+      "dax": "COUNTROWS (\n    FILTER (\n        CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Occupancy Counted] = 1 ),\n        [Beds Occupied at Midnight] > 0.95 * [Bed Base]\n    )\n)",
+      "description": "Nights above 95% occupancy, the level at which flow suffers."
+    },
+    {
+      "name": "95% Line",
+      "table": "Spells",
+      "folder": "Beds",
+      "format": "0%",
+      "dax": "0.95",
+      "description": "Reference line for charts."
+    },
+    {
+      "name": "Readmission Rate (30 days)",
+      "table": "Spells",
+      "folder": "Readmissions",
+      "format": "0.0%",
+      "dax": "DIVIDE ( SUM ( Spells[Readmitted 30d] ), SUM ( Spells[Is Index Spell] ) )",
+      "description": "Index spells followed by an emergency admission within 30 days of discharge."
+    },
+    {
+      "name": "Emergency Admissions per Year",
+      "table": "Spells",
+      "folder": "Inequalities",
+      "format": "#,0.0",
+      "dax": "DIVIDE ( [Emergency Admissions], CALCULATE ( DISTINCTCOUNT ( 'Date'[Financial Year] ), REMOVEFILTERS ( 'Date' ) ) )",
+      "description": "Emergency admissions divided by the years of data (2)."
+    },
+    {
+      "name": "Population Count",
+      "table": "Spells",
+      "folder": "Inequalities",
+      "format": "#,0",
+      "dax": "SUM ( Population[population] )",
+      "description": "Catchment population in context."
+    },
+    {
+      "name": "Crude Rate per 1,000",
+      "table": "Spells",
+      "folder": "Inequalities",
+      "format": "0.0",
+      "dax": "DIVIDE ( 1000 * CALCULATE ( [Emergency Admissions per Year], NOT ISBLANK ( Patients[imd_quintile] ) ), [Population Count] )",
+      "description": "Emergency admissions per 1,000 population a year, not adjusted for age."
+    },
+    {
+      "name": "Age-Standardised Rate per 1,000",
+      "table": "Spells",
+      "folder": "Inequalities",
+      "format": "0.0",
+      "dax": "VAR _bands =\n    ADDCOLUMNS (\n        VALUES ( 'Age Bands'[age_band] ),\n        \"@w\", CALCULATE ( MAX ( 'Age Bands'[esp2013_weight] ) ),\n        \"@pop\", [Population Count],\n        \"@events\", CALCULATE ( [Emergency Admissions per Year], NOT ISBLANK ( Patients[imd_quintile] ) )\n    )\nVAR _rated = FILTER ( _bands, [@pop] > 0 )\nRETURN\n    DIVIDE ( SUMX ( _rated, DIVIDE ( 1000 * [@events], [@pop] ) * [@w] ), SUMX ( _rated, [@w] ) )",
+      "description": "Directly age-standardised to the 2013 European Standard Population: band rates weighted by ESP and averaged."
+    },
+    {
+      "name": "Deprivation Gap",
+      "table": "Spells",
+      "folder": "Inequalities",
+      "format": "0.0\"x\"",
+      "dax": "DIVIDE (\n    CALCULATE ( [Age-Standardised Rate per 1,000], Deprivation[imd_quintile] = 1 ),\n    CALCULATE ( [Age-Standardised Rate per 1,000], Deprivation[imd_quintile] = 5 )\n)",
+      "description": "Most deprived fifth against least deprived fifth, age-standardised."
+    }
+  ],
+  "pages": [
+    {
+      "page": "Activity",
+      "visuals": [
+        {
+          "type": "textbox",
+          "x": 24,
+          "y": 12,
+          "width": 860,
+          "height": 52
+        },
+        {
+          "type": "slicer",
+          "x": 1000,
+          "y": 8,
+          "width": 256,
+          "height": 64
+        },
+        {
+          "type": "card",
+          "x": 24,
+          "y": 76,
+          "width": 236,
+          "height": 96
+        },
+        {
+          "type": "card",
+          "x": 272,
+          "y": 76,
+          "width": 236,
+          "height": 96
+        },
+        {
+          "type": "card",
+          "x": 520,
+          "y": 76,
+          "width": 236,
+          "height": 96
+        },
+        {
+          "type": "card",
+          "x": 768,
+          "y": 76,
+          "width": 236,
+          "height": 96
+        },
+        {
+          "type": "card",
+          "x": 1016,
+          "y": 76,
+          "width": 240,
+          "height": 96
+        },
+        {
+          "type": "lineChart",
+          "x": 24,
+          "y": 184,
+          "width": 800,
+          "height": 260
+        },
+        {
+          "type": "clusteredColumnChart",
+          "x": 840,
+          "y": 184,
+          "width": 416,
+          "height": 260
+        },
+        {
+          "type": "tableEx",
+          "x": 24,
+          "y": 456,
+          "width": 1232,
+          "height": 252
+        }
+      ]
+    },
+    {
+      "page": "Beds",
+      "visuals": [
+        {
+          "type": "textbox",
+          "x": 24,
+          "y": 12,
+          "width": 1000,
+          "height": 52
+        },
+        {
+          "type": "card",
+          "x": 24,
+          "y": 76,
+          "width": 300,
+          "height": 96
+        },
+        {
+          "type": "card",
+          "x": 336,
+          "y": 76,
+          "width": 300,
+          "height": 96
+        },
+        {
+          "type": "card",
+          "x": 648,
+          "y": 76,
+          "width": 300,
+          "height": 96
+        },
+        {
+          "type": "card",
+          "x": 960,
+          "y": 76,
+          "width": 296,
+          "height": 96
+        },
+        {
+          "type": "lineChart",
+          "x": 24,
+          "y": 184,
+          "width": 1232,
+          "height": 250
+        },
+        {
+          "type": "lineChart",
+          "x": 24,
+          "y": 446,
+          "width": 1232,
+          "height": 262
+        }
+      ]
+    },
+    {
+      "page": "Inequalities",
+      "visuals": [
+        {
+          "type": "textbox",
+          "x": 24,
+          "y": 12,
+          "width": 1100,
+          "height": 52
+        },
+        {
+          "type": "card",
+          "x": 24,
+          "y": 76,
+          "width": 300,
+          "height": 96
+        },
+        {
+          "type": "clusteredColumnChart",
+          "x": 24,
+          "y": 184,
+          "width": 720,
+          "height": 524
+        },
+        {
+          "type": "tableEx",
+          "x": 760,
+          "y": 184,
+          "width": 496,
+          "height": 524
+        }
+      ]
+    }
+  ],
+  "base_url": "https://raw.githubusercontent.com/QaisBello/nhs-patient-flow-sql/main/data/clean/"
+}

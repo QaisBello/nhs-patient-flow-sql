@@ -1,0 +1,74 @@
+/// Every day from 1 April 2024 to 31 March 2026. Occupancy Counted = 1 from 1 June 2024: patients admitted before the extract began are missing, so earlier nights undercount (as sql/q04.sql).
+table Date
+	lineageTag: 5fc72b76-7e17-4b9a-bd6a-0a6482c38d7a
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: dd mmm yyyy
+		lineageTag: 731a76fc-8ad4-48b8-ac8e-8d31551aa26f
+		summarizeBy: none
+		sourceColumn: Date
+
+	column 'Month Start'
+		dataType: dateTime
+		formatString: mmm yyyy
+		lineageTag: 61cfa76b-8601-477d-bc3a-c41c9ce38207
+		summarizeBy: none
+		sourceColumn: Month Start
+
+	column Month
+		dataType: string
+		lineageTag: a74508cc-0023-472d-9b33-93e68f00edb4
+		summarizeBy: none
+		sourceColumn: Month
+		sortByColumn: 'Month Start'
+
+	column 'Financial Year'
+		dataType: string
+		lineageTag: b45671b7-66d6-47cc-97ae-4aa2e2a98e16
+		summarizeBy: none
+		sourceColumn: Financial Year
+
+	column Weekday
+		dataType: string
+		lineageTag: 35f5b242-a384-4ff7-be92-cbb47424d4d7
+		summarizeBy: none
+		sourceColumn: Weekday
+		sortByColumn: 'Weekday No'
+
+	column 'Weekday No'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: e7c7451c-9132-4d46-b655-1930b49e0465
+		summarizeBy: none
+		sourceColumn: Weekday No
+
+	column 'Occupancy Counted'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: 8bbbd093-6357-48aa-974a-65738e9b3555
+		summarizeBy: none
+		sourceColumn: Occupancy Counted
+
+	partition Date = m
+		mode: import
+		source =
+				let
+				    Days = List.Dates(#date(2024, 4, 1), Duration.Days(#date(2026, 3, 31) - #date(2024, 4, 1)) + 1, #duration(1, 0, 0, 0)),
+				    Base = Table.FromList(Days, Splitter.SplitByNothing(), {"d"}),
+				    Dated = Table.AddColumn(Base, "Date", each DateTime.From([d]), type datetime),
+				    MonthStart = Table.AddColumn(Dated, "Month Start", each DateTime.From(Date.StartOfMonth([d])), type datetime),
+				    MonthName = Table.AddColumn(MonthStart, "Month", each Date.ToText([d], "MMM yyyy", "en-GB"), type text),
+				    FY = Table.AddColumn(MonthName, "Financial Year", each
+				        let y = if Date.Month([d]) >= 4 then Date.Year([d]) else Date.Year([d]) - 1 in Text.From(y) & "/" & Text.End(Text.From(y + 1), 2), type text),
+				    Weekday = Table.AddColumn(FY, "Weekday", each Date.ToText([d], "ddd", "en-GB"), type text),
+				    WeekdayNo = Table.AddColumn(Weekday, "Weekday No", each Date.DayOfWeek([d], Day.Monday) + 1, Int64.Type),
+				    Counted = Table.AddColumn(WeekdayNo, "Occupancy Counted", each if [d] >= #date(2024, 6, 1) then 1 else 0, Int64.Type),
+				    Result = Table.RemoveColumns(Counted, {"d"})
+				in
+				    Result
+

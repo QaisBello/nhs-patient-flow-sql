@@ -71,6 +71,10 @@ Population denominators by age, sex and deprivation quintile support rates. The 
 
 ![Occupancy](docs/img/q04-occupancy.png)
 
+## Power BI version
+
+The same analysis as a Power BI report, in [`powerbi/`](powerbi/): activity, bed occupancy and inequalities pages. Readmissions, midnight occupancy, weekday discharges and age-standardised rates use the same definitions as the SQL, and every one is checked against `answers/expected.json`. Open `powerbi/Patient_Flow.pbip` in Power BI Desktop and click Refresh; it reads `data/clean` from this repo.
+
 ## Run it
 
 ```bash
