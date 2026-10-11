@@ -1,0 +1,27 @@
+name: powerbi
+
+on:
+  push:
+    paths: ["powerbi/**", "data/clean/**", ".github/workflows/powerbi.yml"]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: powerbi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install jsonschema referencing pandas numpy
+      - name: Regenerate the Power BI project from the spec
+        run: python tools/spec.py
+      - name: Schema and reference checks
+        run: python tools/validate.py
+      - name: Numbers agree with the project's own results
+        run: python tools/expected.py
+      - name: Committed files match the spec (warning only; saving in Power BI Desktop reformats files)
+        run: git diff --quiet -- . ':!docs/expected_values.md' || echo "::warning::Power BI files differ from tools/spec.py"
